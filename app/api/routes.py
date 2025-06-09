@@ -1,5 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from fastapi.responses import FileResonse
+from fastapi.responses import FileResponse
 from app.services.fetchtozip import p_fetchtozip
 from pathlib import Path 
 
@@ -32,4 +32,4 @@ def download(task_id: str):
     zip_path= TEMP_DIR / f"{task_id}.zip"
     if not zip_path.exists():
         raise HTTPException(status_code=404, detail="File not ready")
-    return FileResonse(zip_path, media_type="application/zip"),filename=f"export_task_id}.zip")
+    return FileResponse(zip_path, media_type="application/zip",filename=f"export_{task_id}.zip")
