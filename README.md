@@ -2,7 +2,7 @@
 Fetch it, zip it.
 
 
-##To do list
+## To do list
 1. Download-ı düzəltmək, tempdə zip faylı var, lakin requestə uyğun yüklənmir
 2. Configə öz dəyələrini yazmaq
 3. Müxtəlif tip fayl və apilara dəstək
