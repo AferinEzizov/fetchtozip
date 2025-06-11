@@ -1,6 +1,6 @@
 import polars as pl
 from polars import col
-from typing import List, NamedTuple # Or dataclasses, Pydantic models, etc.
+from typing import List, NamedTuple
 
 class INPUTS(NamedTuple):
     name: str
@@ -9,56 +9,28 @@ class INPUTS(NamedTuple):
 def manipulate(df: pl.DataFrame, inputs: List[INPUTS]) -> pl.DataFrame:
     total_cols = len(df.columns)
     
-    cols_to_process = []
+    rename_map = {}
+    move_map = {}
+
     for item in inputs:
         if item.change_order is not None and 0 <= item.change_order < total_cols:
-            original_col_name = df.columns[item.change_order]
-            
-            cols_to_process.append({
-                "order": item.change_order,
-                "original_name": original_col_name,
-                "new_name": item.name
-            })
-            
-    if not cols_to_process:
+            old_name = df.columns[item.change_order]
+            rename_map[old_name] = item.name
+            move_map[item.name] = item.change_order
+
+    if not rename_map:
         raise ValueError("No valid column specifications found in the inputs.")
-        
-    cols_to_process.sort(key=lambda x: x["order"])
-    
-    select_expressions = [
-        col(spec["original_name"]).alias(spec["new_name"]) for spec in cols_to_process
-    ]
-    
-    return df.select(select_expressions)
 
-if __name__ == '__main__':
-    sample_df = pl.DataFrame({
-        "first_col": [1, 2, 3],
-        "second_col": ["a", "b", "c"],
-        "third_col": [True, False, True],
-    })
+    # 1. Adlarını dəyiş (rename)
+    df = df.rename(rename_map)
 
-    my_inputs = [
-        INPUTS(name="result", change_order=2),
-        INPUTS(name="identifier", change_order=0),
-        INPUTS(name="unused_col", change_order=1), # This will be used to demonstrate renaming
-    ]
-    
-    all_inputs = [
-        INPUTS(name="ID", change_order=0),
-        INPUTS(name="Category", change_order=1),
-        INPUTS(name="Flag", change_order=2),
-    ]
+    # 2. Sıra düzəlişi üçün hazırla
+    current_cols = df.columns
+    reordered_cols = current_cols[:]  # copy
 
+    for new_name, new_pos in move_map.items():
+        reordered_cols.remove(new_name)
+        reordered_cols.insert(new_pos, new_name)
 
-    try:
-        final_df = manipulate(sample_df, all_inputs)
-
-        print("Original DataFrame:")
-        print(sample_df)
-        print("\nManipulated DataFrame:")
-        print(final_df)
-
-    except ValueError as e:
-        print(f"An error occurred: {e}")
-
+    # 3. Sıralama ilə yeni DataFrame
+    return df.select([col(c) for c in reordered_cols])
