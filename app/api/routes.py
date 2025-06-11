@@ -59,9 +59,22 @@ async def status(task_id):
         return {status: "Completed"}
     return {"status","processing", "message", "Export is processed"}
 
-#Fayıl yüklənir
-@router.post('/downoad/{task_id}') #
-async def downoad(task_id, str):
-    zip_path = TEMP_DIR / f"{task_id}.zip"
+#Fayl yüklənir
+#@router.post('/downoad/{task_id}') #
+#async def downoad(task_id):
+#    zip_path = TEMP_DIR / f"{task_id}.zip"
+
+@router.get("/download/{task_id}") # Faylın yükləmə üçün funksiyadır
+def download(task_id: str):
 
 
+    zip_path= TEMP_DIR / f"{task_id}.zip" 
+
+
+    if not zip_path.exists(): # fayl olmadıqda hazırldağını  bildirir
+
+
+        raise HTTPException(status_code=404, detail="File not ready")
+
+
+    return FileResponse(zip_path, media_type="application/zip",filename=f"export_{task_id}.zip") #bu xətalıdı, yükləmə baş vermir
