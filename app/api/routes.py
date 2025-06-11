@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from pathlib import Path
@@ -5,17 +6,21 @@ from typing import List, Optional, Dict
 import json
 import asyncio
 
+
 # CONFIG FAYLLARI
-from app.core.config import TEMP_DIR, URL, INPUTS
+from app.core.config import TEMP_DIR, URL, INPUTS, ADVANCED 
+
 # Əsas prosessçi
 from app.services.data import process 
 from pydantic import BaseModel
+
 # ID UCUN
 import uuid
 
 # URL PREFIXI
 router = APIRouter(prefix=URL)
 TEMP_DIR = Path(TEMP_DIR)
+
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -40,7 +45,15 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# İstifadəçinin requesti
+# İstifadəçinin xüsusi istəkləri üçün requesti
+"""
+class Advanced(BaseModel):
+    file_type: Optional[str] = None
+    api_url: Optional[str] = None
+    normalization_type: Optinal[str] = None
+    rate_limit: Optional[int] = None
+"""
+# İstifadəçinin  Cədvəl üçün requesti
 class Input(BaseModel):
     name: Optional[str] = None
     coloumn: Optional[int] = None
@@ -63,6 +76,19 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
     except WebSocketDisconnect:
         manager.disconnect(task_id)
 
+#Xüsusi istəklər üçün
+#@router.get('/advanced')  # parametrləri daxil edir
+#async def update_columns(file_type: Optional[str] = None, api_url: Optional[str] = None, normalization_type: Optional[str] = None):
+#    advanced = Advanced(
+#        file_type=file_type,
+#        api_url=api_url,
+#        normalization_type=normalization_type,
+#        rate_limit=rate_limit
+#    )
+#    
+#    ADVANCED.append(advanced)
+#    return {"message": "Advanced added successfully", "advanced": advanced}
+
 # İstifadəçi elədiyi cədvəl dəyişikliyini INPUT listinə daxil edir
 @router.get('/input')  # parametrləri daxil edir
 async def update_columns(name: Optional[str] = None, coloumn: Optional[int] = None, change_order: Optional[int] = None):
@@ -70,8 +96,8 @@ async def update_columns(name: Optional[str] = None, coloumn: Optional[int] = No
         name=name,
         coloumn=coloumn,
         change_order=change_order,
-    )   
-    
+    )
+
     INPUTS.append(input_data)
     return {"message": "Input added successfully", "input": input_data}
 
@@ -119,6 +145,11 @@ async def start(background_tasks: BackgroundTasks):
     background_tasks.add_task(process_with_notifications, task_id, INPUTS.copy())
     
     return {"message": "Export started", "task_id": task_id}
+
+
+@router.get('/table')
+async def table():
+    return 
 
 # Status yoxlanır  
 @router.get('/status/{task_id}')  # İstifadəçiyə status haqqında məlumat verilir

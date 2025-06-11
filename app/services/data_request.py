@@ -15,11 +15,11 @@ def fetch_data(base_url: str, max_pages: int = 10, limit: int = 100) -> pl.DataF
     all_keys = set()
     for row in all_data:
         all_keys.update(row.keys())
-
-    normalized_data = [
-        {key: row.get(key, None) for key in all_keys}
-        for row in all_data
-    ]
+    #if 
+        normalized_data = [
+            {key: row.get(key, None) for key in all_keys}
+            for row in all_data
+        ]
 
     df = pl.DataFrame(normalized_data)
 
