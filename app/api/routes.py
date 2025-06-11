@@ -1,47 +1,67 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status 
+from fastapi import  APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.responses import FileResponse
-from app.services.fetchtozip import p_fetchtozip
-from app.core.config import TEMP_DIR, INPUT
+from pathlib import Path
+from typing import List, Optional
+#CONFIG FAYLLARI
+from app.core.config import TEMP_DIR, URL , INPUTS
+#Əsas prosessçi
+from app.services.data import process 
+
+from pydantic import BaseModel
+
+# iD UCUN
 import uuid
 
-router = APIRouter(prefix="/api/export", tags=["Export Operations"]) 
+#URL PREFIXI
+router = APIRouter(prefix=URL)
+TEMP_DIR = Path(TEMP_DIR)
+# İstifadəçinin requesti
+class Input(BaseModel):
+    name: Optional[str] = None
+    coloumn: Optional[int] = None
+    change_order: Optional[int] = None 
 
+# prosess haqqında status
+class Status(BaseModel):
+    ready: str
+    pending: str
+    started: str
 
-@router.get('/inputname/{name}', summary="Update column name for the second column")
-async def inputnamey(name: str):
-    """Update column name for the second column"""
-    INPUT[2] = name
-    return {"message": f"Column name updated to: {name}"}
+# Istifadəçi elədiyi cədvəl dəyişikliyini İNPUT listinə daxil edirsiz
+@router.get('/input') # parametrləri daxil edirsiz
+async def update_columns(name: Optional[str],coloumn: Optional[int],change_order: Optional[int]):
 
-@router.get('/inputorder/{order}', summary="Update column order for the third column")
-async def inputorder(order: int):
-    """Update column order for the third column"""
-    if not 0 <= order:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order must be 0 or 1") 
-    INPUT[3] = order
-    return {"message": f"Column order updated to: {order}"}
+    input_data = Input(
+            name=name,
+            coloumn=coloumn,
+            change_order=change_order,
+            )   
+    
+    INPUTS.append(input_data)
 
-@router.post("/start", status_code=status.HTTP_202_ACCEPTED, summary="Initiate a new data export process") 
-async def start_export(background_tasks: BackgroundTasks):
-    task_id = str(uuid.uuid4())
-    background_tasks.add_task(p_fetchtozip, task_id, INPUT[3], INPUT[2])
+# Buradan prosess başladılır
+@router.post('/start') # task_id yaradılır və queryə uyğun fayl hazırlanır
+async def start(background_tasks: BackgroundTasks):
+    task_id=str(uuid.uuid4())
+    background_tasks.add_task(process, task_id, INPUTS)
     return {"message": "Export started", "task_id": task_id}
 
-@router.get("/status/{task_id}", summary="Get the current status of an export task")
-def status(task_id: str):
-    done_file = TEMP_DIR / f"{task_id}.done"
-    error_file = TEMP_DIR / f"{task_id}.error"
-    zip_file = TEMP_DIR / f"{task_id}.zip"
+# Status yoxlanır
+@router.post('/status{task_id}') # Istifadəçiyə status haqqında məlumat verilir
+async def status(task_id):
+    _done = TEMP_DIR / f"{task_id}.done" 
+    _error = TEMP_DIR / f"{task_id}.error"
+    _zip = TEMP_DIR / f"{task_id}.zip"
+    
+    #if _error:
+   #     return {status: "failed","message" : _error.read_text()}
+    if _done is not None:
+        return {status: "Completed"}
+    return {"status","processing", "message", "Export is processed"}
 
-    if error_file.exists():
-        return {"status": "failed", "message": error_file.read_text()}
-    if done_file.exists() and zip_file.exists():
-        return {"status": "completed"}
-    return {"status": "processing", "message": "Export is currently being processed."}
-
-@router.get("/download/{task_id}", summary="Download the completed export file")
-def download(task_id: str):
+#Fayıl yüklənir
+@router.post('/downoad/{task_id}') #
+async def downoad(task_id, str):
     zip_path = TEMP_DIR / f"{task_id}.zip"
-    if not zip_path.exists():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not ready") # Used status.HTTP_404_NOT_FOUND
-    return FileResponse(zip_path, media_type="application/zip", filename=f"{task_id}.zip")
+
+
