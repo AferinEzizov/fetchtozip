@@ -1,14 +1,15 @@
 import json
+from pathlib import Path
 
-# Load JSON config
-with open('config.json', 'r') as file:
+# Load JSON config file
+CONFIG_PATH = Path("app/core/json/config.json")
+
+with CONFIG_PATH.open("r") as file:
     config = json.load(file)
 
-# Assign variables from config
-URL = config.get("URL", "")
-DB_URL = config.get("DB_URL", "")
-TEMP_DIR = config.get("TEMP_DIR", "")
-INPUTS = config.get("INPUTS", [])
-ADVANCED = config.get("ADVANCED", [])
-
-
+# Static configuration variables
+URL: str = config.get("URL", "")
+DB_URL: str = config.get("DB_URL", "")
+TEMP_DIR: str = config.get("TEMP_DIR", "tmp")
+Inputs: dict = config.get("ADVANCED", {})
+ADVANCED: dict = config.get("ADVANCED", {})
