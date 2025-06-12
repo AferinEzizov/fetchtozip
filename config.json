@@ -1,0 +1,8 @@
+{
+  "URL": "/api/export",
+  "DB_URL": "http://localhost:3001/api/data",
+  "TEMP_DIR": "tmp",
+  "INPUTS": ["input1", "input2"],
+  "ADVANCED": ["option1", "option2"]
+}
+

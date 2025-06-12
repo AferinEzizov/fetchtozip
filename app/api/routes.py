@@ -5,13 +5,13 @@ from pathlib import Path
 from typing import List, Optional, Dict
 import json
 import asyncio
-
+import requests
 
 # CONFIG FAYLLARI
 from app.core.config import TEMP_DIR, URL, INPUTS, ADVANCED 
-
 # Əsas prosessçi
 from app.services.data import process 
+from app.services.data_request import fetch_data
 from pydantic import BaseModel
 
 # ID UCUN
@@ -77,17 +77,17 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
         manager.disconnect(task_id)
 
 #Xüsusi istəklər üçün
-#@router.get('/advanced')  # parametrləri daxil edir
-#async def update_columns(file_type: Optional[str] = None, api_url: Optional[str] = None, normalization_type: Optional[str] = None):
-#    advanced = Advanced(
-#        file_type=file_type,
-#        api_url=api_url,
-#        normalization_type=normalization_type,
-#        rate_limit=rate_limit
-#    )
-#    
-#    ADVANCED.append(advanced)
-#    return {"message": "Advanced added successfully", "advanced": advanced}
+@router.get('/advanced')  # parametrləri daxil edir
+async def update_columns(file_type: Optional[str] = None, api_url: Optional[str] = None, normalization_type: Optional[str] = None):
+    advanced = Advanced(
+        file_type=file_type,
+        api_url=api_url,
+        normalization_type=normalization_type,
+        rate_limit=rate_limit
+    )
+    
+    ADVANCED.append(advanced)
+    return {"message": "Advanced added successfully", "advanced": advanced}
 
 # İstifadəçi elədiyi cədvəl dəyişikliyini INPUT listinə daxil edir
 @router.get('/input')  # parametrləri daxil edir
@@ -101,23 +101,18 @@ async def update_columns(name: Optional[str] = None, coloumn: Optional[int] = No
     INPUTS.append(input_data)
     return {"message": "Input added successfully", "input": input_data}
 
-# Enhanced process function with WebSocket notifications
 async def process_with_notifications(task_id: str, inputs: List[Input]):
     try:
-        # Notify start
         await manager.send_personal_message(
             json.dumps({"status": "started", "message": "Processing started", "task_id": task_id}),
             task_id
         )
         
-        # Call the actual process function (sync or async)
         if asyncio.iscoroutinefunction(process):
             result = await process(task_id, inputs)
         else:
-            # Run sync function in thread pool to avoid blocking
             result = await asyncio.get_event_loop().run_in_executor(None, process, task_id, inputs)
         
-        # Notify completion
         await manager.send_personal_message(
             json.dumps({"status": "completed", "message": "Processing completed", "task_id": task_id}),
             task_id
@@ -126,7 +121,6 @@ async def process_with_notifications(task_id: str, inputs: List[Input]):
         return result
         
     except Exception as e:
-        # Notify error
         error_path = TEMP_DIR / f"{task_id}.error"
         error_path.write_text(str(e))
         
@@ -149,7 +143,10 @@ async def start(background_tasks: BackgroundTasks):
 
 @router.get('/table')
 async def table():
-    return 
+    
+    response = requests.get("http://localhost:3001/api/data")
+    response.raise_for_status()
+    return response.json()
 
 # Status yoxlanır  
 @router.get('/status/{task_id}')  # İstifadəçiyə status haqqında məlumat verilir
