@@ -48,6 +48,9 @@
 - **Processing**: Applies all transformations using Polars (column changes, filters, aggregations).
 - **Export**: Writes results as CSV, JSON, XLSX, or creates a ZIP archive.
 - **Cleanup**: Manages temp files, handles errors, and tracks each task’s state.
+  
+## Docker Image
+[![Docker Pulls](https://img.shields.io/docker/aferin/fetchtozip.svg)](https://hub.docker.com/r/aferin/fetchtozip)
 
 ## Example Usage
 
