@@ -20,7 +20,7 @@ def fetch_data(
     """
     all_records = []
 
-    for page in range(1, rate_limit + 1):
+    for page in range(1, 10 + 1):
         url = f"{base_url}?page={page}&limit={page_limit}"
         logging.debug(f"Fetching {url}")
         response = httpx.get(url, timeout=30)
