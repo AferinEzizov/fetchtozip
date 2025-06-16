@@ -1,6 +1,5 @@
 httpx
-orcjson
 fastapi
 uvicorn
 polars
-requests
+pydantic
