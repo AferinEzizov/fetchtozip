@@ -3,5 +3,5 @@
   "DB_URL": "http://localhost:3001/api/data",
   "TEMP_DIR": "tmp",
   "INPUTS": [],
-  "ADVANCED": []
+  "CONFIGURE": []
 }

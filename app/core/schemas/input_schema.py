@@ -6,7 +6,7 @@ class Input(BaseModel):
     column: Optional[int] = None
     change_order: Optional[int] = None
 
-class Advanced(BaseModel):
+class Configure(BaseModel):
     file_type: Optional[str] = None
     tmp_dir: Optional[str] = None
     rate_limit: Optional[int] = None

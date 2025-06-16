@@ -13,7 +13,7 @@ def zip_export_json(task_id: str) -> Path:
 
     try:
         df = pl.read_csv(csv_path)
-        df.write_json(json_path, orient="records")
+        df.write_json(json_path)
 
         with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as zipf:
             zipf.write(json_path, arcname="data.json")

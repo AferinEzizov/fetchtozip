@@ -16,6 +16,7 @@ router = APIRouter()
 
 # --- Define your specific API endpoints for 'Process' here ---
 
+task_statuses = {}
 
 @router.post("/start", summary="Start a new processing task")
 async def start_processing_task(background_tasks: BackgroundTasks):
@@ -36,42 +37,38 @@ async def start_processing_task(background_tasks: BackgroundTasks):
     output_dir.mkdir(parents=True, exist_ok=True)
     task_id = "task_" + uuid.uuid4().hex
 
-    # Validate if inputs are provided
+    # Validate if inputs Advancedare provided
     if not Inputs:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No inputs provided.")
 
-    # Add the run_pipeline function to background tasks.
-    # The 'url' and 'inputs' received from the request body are passed directly.
-    background_tasks.add_task(run_pipeline, task_id, Inputs)
+    # Register task as in_progress
+    task_statuses[task_id] = {"status": "in_progress", "progress": 0}
+
+    def run_and_track():
+           try:
+               run_pipeline(task_id, Inputs, Configures)
+               task_statuses[task_id] = {"status": "completed"}
+           except Exception as e:
+               task_statuses[task_id] = {"status": "failed", "error": str(e)}
+
+    background_tasks.add_task(run_and_track)
 
     print(f"Processing task {task_id} initiated with {len(Inputs)} inputs.")
     return {"message": "Task started", "task_id": task_id}
 
+
 @router.get("/status/{task_id}", summary="Get the status of a processing task")
 async def get_processing_status(task_id: str):
-    """
-    Retrieves the current status of a previously started processing task.
-    """
-    # In a real application, you would query a database or
-    # task queue to get the actual status for the given task_id.
-    # For demonstration, let's mock some statuses.
-    if task_id == "some_unique_task_id_123":
-        return {"task_id": task_id, "status": "in_progress", "progress": 50}
-    elif task_id == "completed_task_xyz":
-        return {"task_id": task_id, "status": "completed", "result": "output_data_here"}
-    else:
+    ""
+    if task_id not in task_statuses:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return {"task_id": task_id, **task_statuses[task_id]}
+
 
 @router.delete("/cancel/{task_id}", summary="Cancel a processing task")
 async def cancel_processing_task(task_id: str):
-    """
-    Attempts to cancel a running processing task.
-    """
-    # Implement actual cancellation logic here (e.g., stopping a celery task)
-    print(f"Attempting to cancel task {task_id}.")
-    if task_id == "some_unique_task_id_123":
-        return {"message": f"Task {task_id} cancellation requested.", "status": "pending_cancellation"}
-    else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found or already completed")
-
-# Add more process-related endpoints as needed (e.g., /upload, /download, /configure)
+    # You'd need real async task manager (Celery, RQ, etc) to cancel
+    if task_id in task_statuses and task_statuses[task_id]["status"] == "in_progress":
+        task_statuses[task_id]["status"] = "cancel_requested"
+        return {"message": f"Task {task_id} cancellation requested.", "status": "cancel_requested"}
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found or already completed")

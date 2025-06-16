@@ -2,11 +2,11 @@
 
 import logging
 from typing import List
-from pathlib import Path
+# from pathlib import Path
 
 # Assuming these modules and schemas are correctly defined elsewhere in your project
-from app.core.config import TEMP_DIR,DB_URL
-from app.core.schemas.input_schema import Input
+from app.core.config import DB_URL
+from app.core.schemas.input_schema import Input, Configure
 from app.services.requests.http_client import fetch_data
 from app.services.process.process import process
 from app.services.export._zip import zip_export
@@ -14,7 +14,7 @@ from app.services.export._zip import zip_export
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
 
-def run_pipeline(task_id: str, inputs: List[Input]) -> dict:
+def run_pipeline(task_id: str, inputs: List[Input], confgure: List[Configure]) -> dict:
     """
     Orchestrates the entire data processing pipeline:
     1. Fetches data from a specified URL.
@@ -25,8 +25,8 @@ def run_pipeline(task_id: str, inputs: List[Input]) -> dict:
         task_id (str): A unique identifier for the processing task.
         url (str): The URL from which to fetch the initial data.
         inputs (List[Input]): A list of input configurations for data processing.
-
-    Returns:
+        configure (List[Configure]): A list of config confguration for configure the file that exports.
+        Returns:
         dict: A dictionary containing the task ID and the path to the generated zip file.
 
     Raises:
@@ -49,7 +49,7 @@ def run_pipeline(task_id: str, inputs: List[Input]) -> dict:
         # 3. Zip the generated CSV file
         # The 'zip_export' function is expected to return the Path object of the zip file.
         logger.debug(f"Pipeline: Zipping CSV file from {csv_path}")
-        zip_path = zip_export(csv_path)
+        zip_path = zip_export(task_id)
         #logger.info(f"Pipeline: Zip file created at {zip_path}")
 
         return {"task_id": task_id, "zip_path": str(zip_path)}

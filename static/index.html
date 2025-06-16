@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Table UI</title>
+  <!-- Link to the external CSS file -->
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+  <div class="navbar">
+    <div>
+      <span class="status ok" id="status">OK</span>
+    </div>
+    <div class="navbar-actions">
+      <span>Task ID: <span id="task_id" style="color:var(--color-cyan);">N/A</span></span>
+      <button id="startBtn">Start Process</button>
+      <button id="downloadBtn" style="display:none;">Download</button>
+      <button id="toggleAdvBtn" title="Show advanced">&#9881;</button>
+    </div>
+  </div>
+  <div class="advanced-menu" id="advancedMenu">
+    <label>Temp Dir: <input type="text" id="tempDirInput" /></label>
+    <label>Normalization Type:
+      <select id="normalizationTypeSelect">
+        <option>Min-Max</option>
+        <option>Z-Score</option>
+      </select>
+    </label>
+    <label>Rate Limit: <input type="number" min="1" max="100" id="rateLimitInput" /></label>
+  </div>
+  <div id="table-container"></div>
+  <div class="pagination">
+    <button onclick="prevPage()">Prev</button>
+    Page <span id="page">1</span>
+    <button onclick="nextPage()">Next</button>
+  </div>
+
+  <!-- Link to the external JavaScript file -->
+  <script src="static/script.js"></script>
+</body>
+</html>
+

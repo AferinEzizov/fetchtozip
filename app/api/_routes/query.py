@@ -4,8 +4,8 @@ import logging
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, status
 # Assuming app.core.schemas.input_schema and Input are correctly defined
-from app.core.schemas.input_schema import Input
-from app.core.config import Inputs
+from app.core.schemas.input_schema import Input, Configure
+from app.core.config import Inputs, Configures
 
 # Initialize an APIRouter instance for input management
 router = APIRouter()
@@ -31,9 +31,6 @@ async def add_or_update_input(input_data: Input) -> Dict[str, Any]:
         HTTPException: If there's an issue with the input data.
     """
     try:
-        # For simplicity, we are just appending.
-        # In a real scenario, you might want to check if an input with the same 'name'
-        # already exists and update it, rather than always appending.
         Inputs.append(input_data)
         logger.debug(f"Added single input: {input_data}")
         return {"message": "Single input added successfully", "input": input_data.dict()}
@@ -94,3 +91,29 @@ async def get_all_inputs() -> Dict[str, Any]:
         "inputs": [i.dict() for i in Inputs],
         "count": len(Inputs)
     }
+
+@router.post("/configure", summary="Configure how to process data and export it.")
+async def configure_request(conf_data: Configure) -> Dict[str, Any]:
+    """
+    Adds a new config or updates an existing one in the in-memory list.
+    The input is provided as a single JSON object in the request body.
+
+    Args:
+        conf_data (Configure): The config data to add/update, conforming to the Configure schema.
+
+    Returns:
+        Dict[str, Any]: A message indicating success and the added/updated Configures.
+
+    Raises:
+        HTTPException: If there's an issue with the config data.
+    """
+    try:
+        Configures.clear()
+        Configures.append(conf_data)
+        logger.debug(f"Added single input: {conf_data}")
+        return {"message": "Single input added successfully", "input": conf_data.dict()}
+    except Exception as e:
+        logger.error(f"Failed to add single input: {e}")
+        # FastAPI's Pydantic validation handles most format errors automatically,
+        # but this catch-all is good for unexpected issues.
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid input format: {e}")
