@@ -16,7 +16,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 @router.post("/inputs", summary="Add or update a single column input")
-async def add_or_update_input(input_data: Input) -> Dict[str, Any]:
+async def add_or_update_input(input_data: List[Input]):
     """
     Adds a new input or updates an existing one in the in-memory list.
     The input is provided as a single JSON object in the request body.
@@ -41,7 +41,7 @@ async def add_or_update_input(input_data: Input) -> Dict[str, Any]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid input format: {e}")
 
 @router.post("/bulk-inputs", summary="Add multiple column inputs via JSON list")
-async def add_bulk_inputs(inputs_data: List[Input]) -> Dict[str, Any]:
+async def add_bulk_inputs(inputs_data: List[Input]) :
     """
     Adds multiple inputs to the in-memory list from a JSON array in the request body.
 

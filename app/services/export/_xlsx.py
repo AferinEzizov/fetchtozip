@@ -1,31 +1,31 @@
 import polars as pl
 from pathlib import Path
-from zipfile import ZipFile, ZIP_DEFLATED
 from app.core.config import TEMP_DIR
 import os
+import logging
 
-def zip_export_xlsx(task_id: str) -> Path:
+logger = logging.getLogger(__name__)
+
+def xlsx_export(xlsx_path: Path, task_id: str) -> Path:
     output_dir = Path(TEMP_DIR)
-    csv_path = output_dir / f"{task_id}.csv"
     xlsx_path = output_dir / f"{task_id}.xlsx"
-    zip_path = output_dir / f"{task_id}.zip"
     error_path = output_dir / f"{task_id}.error"
 
     try:
-        df = pl.read_csv(csv_path)
-        df.write_excel(xlsx_path)  # requires openpyxl or xlsxwriter
+        logger.debug(f"xlsx_export: Reading XLSX from {xlsx_path}")
+        df = pl.read_excel(xlsx_path)  # Will raise if file doesn't exist or unreadable
 
-        with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as zipf:
-            zipf.write(xlsx_path, arcname="data.xlsx")
-
-        return zip_path
+        logger.debug(f"xlsx_export: Creating XLSX at {xlsx_path}")
+        df.write_excel(xlsx_path)
+        logger.info(f"xlsx_export: Successfully wrote to {xlsx_path}")
+        return xlsx_path
 
     except Exception as e:
-        error_path.write_text(f"Error during XLSX zip export: {e}")
+        logger.error(f"xlsx_export: Failed to export to xlsx for {task_id}: {e}")
+        error_path.write_text(f"An error occurred during xlsx export: {e}")
         raise
 
     finally:
-        if csv_path.exists():
-            os.remove(csv_path)
         if xlsx_path.exists():
+            logger.debug(f"xlsx_export: Cleaning up temporary XLSX at {xlsx_path}")
             os.remove(xlsx_path)

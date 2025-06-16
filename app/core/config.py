@@ -11,5 +11,5 @@ with CONFIG_PATH.open("r") as file:
 URL: str = config.get("URL", "")
 DB_URL: str = config.get("DB_URL", "")
 TEMP_DIR: str = config.get("TEMP_DIR", "tmp")
-Inputs: dict = config.get("ADVANCED", {})
-Configures: dict = config.get("CONFIGURE", {})
+Inputs: list = config.get("ADVANCED", [])
+Configures: list = config.get("CONFIGURE", [])

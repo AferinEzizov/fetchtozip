@@ -1,31 +1,31 @@
 import polars as pl
 from pathlib import Path
-from zipfile import ZipFile, ZIP_DEFLATED
 from app.core.config import TEMP_DIR
 import os
+import logging
 
-def zip_export_json(task_id: str) -> Path:
+logger = logging.getLogger(__name__)
+
+def json_export(json_path: Path, task_id: str) -> Path:
     output_dir = Path(TEMP_DIR)
-    csv_path = output_dir / f"{task_id}.csv"
     json_path = output_dir / f"{task_id}.json"
-    zip_path = output_dir / f"{task_id}.zip"
     error_path = output_dir / f"{task_id}.error"
 
     try:
-        df = pl.read_csv(csv_path)
-        df.write_json(json_path)
+        logger.debug(f"json_export: Reading JSON from {json_path}")
+        df = pl.read_json(json_path)  # Will raise if file doesn't exist or unreadable
 
-        with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as zipf:
-            zipf.write(json_path, arcname="data.json")
-
-        return zip_path
+        logger.debug(f"json_export: Creating JSOON at {json_path}")
+        df.write_ndjson(json_path)
+        logger.info(f"json_export: Successfully wrote to {json_path}")
+        return json_path
 
     except Exception as e:
-        error_path.write_text(f"Error during JSON zip export: {e}")
+        logger.error(f"json_export: Failed to export CSV to json for {task_id}: {e}")
+        error_path.write_text(f"An error occurred during json export: {e}")
         raise
 
     finally:
-        if csv_path.exists():
-            os.remove(csv_path)
         if json_path.exists():
+            logger.debug(f"json_export: Cleaning up temporary JSON at {json_path}")
             os.remove(json_path)

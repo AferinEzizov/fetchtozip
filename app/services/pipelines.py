@@ -10,11 +10,14 @@ from app.core.schemas.input_schema import Input, Configure
 from app.services.requests.http_client import fetch_data
 from app.services.process.process import process
 from app.services.export._zip import zip_export
+from app.services.export._json import json_export
+from app.services.export._csv import csv_export
+from app.services.export._xlsx import xlsx_export
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
 
-def run_pipeline(task_id: str, inputs: List[Input], confgure: List[Configure]) -> dict:
+def run_pipeline(task_id: str, inputs: List[Input], configuration: List[Configure]) -> dict:
     """
     Orchestrates the entire data processing pipeline:
     1. Fetches data from a specified URL.
@@ -38,21 +41,26 @@ def run_pipeline(task_id: str, inputs: List[Input], confgure: List[Configure]) -
 
         # 1. Fetch data from the URL
         logger.debug(f"Pipeline: Fetching data from URL: {DB_URL}")
-        data = fetch_data(DB_URL)
+        data = fetch_data(DB_URL, rate_limit = configuration.rate_limit, page_limit = configuration.page_limit)
         logger.debug(f"Pipeline: Fetched data with columns: {data.schema}")
         # 2. Process data and save as CSV
         # The 'process' function is expected to return the Path object of the CSV file.
         logger.debug(f"Pipeline: Processing data for task_id={task_id} with {len(inputs)} inputs.")
-        csv_path = process(task_id, inputs, data)
-        logger.info(f"Pipeline: Processed data saved at {csv_path}")
 
-        # 3. Zip the generated CSV file
-        # The 'zip_export' function is expected to return the Path object of the zip file.
-        logger.debug(f"Pipeline: Zipping CSV file from {csv_path}")
-        zip_path = zip_export(task_id)
-        #logger.info(f"Pipeline: Zip file created at {zip_path}")
+        # Export based on file_type
+        file_type = configuration.file_type.lower() if configuration.file_type else "csv"
+        output_path: Path
 
-        return {"task_id": task_id, "zip_path": str(zip_path)}
+        if file_type == "csv":
+            output_path = csv_export(processed_csv_path, task_id)
+        elif file_type == "zip":
+            output_path = zip_export(processed_csv_path, task_id)
+        elif file_type == "json":
+            output_path = json_export(processed_csv_path, task_id)
+        elif file_type == "xlsx":
+            output_path = xlsx_export(processed_csv_path, task_id)
+        else:
+            raise ValueError(f"Unsupported file type: {file_type}")
 
     except Exception as e:
         # Log the full traceback for better debugging
