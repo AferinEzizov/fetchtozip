@@ -5,7 +5,7 @@ from app.core.schemas.input_schema import Input
 from app.core.config import TEMP_DIR
 
 
-def process(task_id: str, inputs: List[Input], data: pl.LazyFrame) -> Path:
+def process(data: pl.LazyFrame, task_id: str, inputs: List[Input]) -> Path:
     df = data.collect()  # eager for rename
 
     for input_data in inputs:

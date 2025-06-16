@@ -1,27 +1,27 @@
 import httpx
-import polars as pl
 import logging
+import polars as pl
 
 def fetch_data(
     base_url: str,
-    max_pages: int=10,
-    page_size: int=10
+    rate_limit: int = 10,
+    page_limit: int = 10
 ) -> pl.LazyFrame:
     """
-    Fetch all pages from a paginated API and combine results into one Polars LazyFrame.
+    Fetch paginated data from an API and return the combined records as a Polars LazyFrame.
 
     Args:
-        base_url (str): API endpoint without query params, e.g. "http://localhost:3000/api/data"
-        max_pages (int): Maximum number of pages to fetch to avoid infinite loops.
-        page_size (int): Number of records per page.
+        base_url (str): Base API URL without query params.
+        rate_limit (int): Max number of pages to fetch.
+        page_limit (int): Number of records per page.
 
     Returns:
-        pl.LazyFrame: Combined lazy dataframe of all fetched pages.
+        pl.LazyFrame: A Polars LazyFrame containing all combined records.
     """
-    lazy_frames = []
+    all_records = []
 
-    for page in range(1, max_pages + 1):
-        url = f"{base_url}?page={page}&limit={page_size}"
+    for page in range(1, rate_limit + 1):
+        url = f"{base_url}?page={page}&limit={page_limit}"
         logging.debug(f"Fetching {url}")
         response = httpx.get(url, timeout=30)
         response.raise_for_status()
@@ -34,18 +34,12 @@ def fetch_data(
         if not isinstance(data, list):
             raise ValueError("Expected list of records per page.")
 
-        # Convert current page data to eager DataFrame
-        df = pl.DataFrame(data)
-        # Convert to lazy and append
-        lazy_frames.append(df.lazy())
+        all_records.extend(data)
         logging.info(f"Fetched {len(data)} records from page {page}")
 
-    if not lazy_frames:
-        logging.warning("No data fetched from API.")
-        return pl.LazyFrame([])
+    logging.info(f"Total records fetched: {len(all_records)}")
 
-    # Concatenate all lazy frames (like vertical stack)
-    combined_lazy = pl.concat(lazy_frames, how="vertical")
-    logging.info(f"Total rows (lazy): {combined_lazy.collect().shape[0]}")
-
-    return combined_lazy
+    # Convert to Polars DataFrame and then to LazyFrame
+    df = pl.DataFrame(all_records)
+    lazy_df = df.lazy()
+    return lazy_df
