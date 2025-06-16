@@ -1,177 +1,117 @@
 # FetchtoZip
 
+**FetchtoZip** is a high-performance, API-driven microservice built with Python for fetching, processing, and exporting data (in ZIP or other formats) from HTTP sources. The system is designed for asynchronous operation and is optimized for fast, scalable tabular data processing.
 
-**FetchtoZip** HTTP API-lərdən məlumat yükləyən, onu emal edən və ZIP arxivlərinə çevirən yüksək performanslı asinxron mikroxidmətdir. Müasir Python texnologiyaları ilə korporativ səviyyədə performans və miqyaslanma üçün yaradılmışdır.
+## Key Features
 
-## Əsas Xüsusiyyətlər
+- **API-Driven Workflow**: Exposes RESTful endpoints for all operations—adding inputs, configuring processing, starting tasks, checking status, and downloading results.
+- **Dynamic Input Management**: Add, update, list, or clear data column definitions via API.
+- **Configurable Processing**: Set processing parameters and export formats through dedicated configuration endpoints.
+- **Asynchronous Task Execution**: Launch data processing jobs as background tasks, enabling non-blocking, concurrent operations.
+- **Status & Control**: Query the status of any task or cancel it if needed.
+- **Data Fetching**: Pulls data from HTTP endpoints using a configurable source URL.
+- **Fast Data Processing**: Uses [Polars](https://www.pola.rs/) for efficient columnar data transformation, filtering, and grouping—much faster than pandas.
+- **Multiple Export Formats**: Output can be CSV, JSON, XLSX, or ZIP, as selected in the configuration.
+- **Download API**: Retrieve results via `/download/{task_id}` endpoint in the requested format.
+- **Temporary File Management**: All intermediate and result files are managed in a configurable temp directory.
+- **Error Handling & Progress**: Tracks task progress, handles errors gracefully, and provides detailed status.
+- **WebSocket Support**: (If enabled) Real-time task progress notifications via WebSocket.
+- **Modular Python Structure**: Code is split into logical modules—API routing, core config, pipeline services, export utilities, and data models.
+- **Docker Deployment**: Easily containerizable with environment variables for all configs.
 
-- **Yüksək Performans**: Polars istifadə edərək pandas-dan 8-10 dəfə sürətli
-- **Asinxron Arxitektura**: FastAPI ilə bloklaşmayan əməliyyatlar
-- **Məlumat Manipulyasiyası**: Sütun dəyişmə, filtrleme və transformasiya
-- **Real-vaxt İzləmə**: WebSocket əsaslı status bildirişləri
-- **Çoxlu Format Dəstəyi**: CSV, Excel, JSON emalı
-- **Arxa Plan Tapşırıqları**: Effektiv növbə əsaslı iş idarəetməsi
+## Core API Endpoints
 
-## Arxitektura
+| Method | Endpoint                   | Description                              |
+|--------|----------------------------|------------------------------------------|
+| POST   | `/api/export/inputs`       | Add or update a column input             |
+| POST   | `/api/export/bulk-inputs`  | Add multiple column inputs               |
+| GET    | `/api/export/inputs-list`  | List all stored inputs                   |
+| DELETE | `/api/export/inputs-clear` | Clear all stored inputs                  |
+| POST   | `/api/export/configure`    | Set the active processing configuration  |
+| POST   | `/api/export/start`        | Start a new processing task (background) |
+| GET    | `/api/export/status/{id}`  | Get the status of a processing task      |
+| GET    | `/api/export/download/{id}`| Download the output of a completed task  |
+| DELETE | `/api/export/cancel/{id}`  | Cancel a processing task                 |
+| WS     | `/api/export/ws/{id}`      | (Optional) Real-time progress updates    |
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   FastAPI        │    │   Məlumat       │
-│   (React/JS)    │◄──►│   Backend        │◄──►│   Qatı          │
-│                 │    │                  │    │   (Polars)      │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   WebSocket     │    │   Arxa Plan      │    │   Fayl Sistemi  │
-│   Bildirişləri  │    │   Tapşırıqları   │    │   (ZIP/Excel)   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-```
+## How It Works
 
-## Quraşdırma
+1. **Define Inputs**: Specify columns and transformations via API.
+2. **Configure Processing**: Set source URLs, processing options, and export format.
+3. **Start Task**: Launch processing as a background job.
+4. **Monitor Progress**: Poll status or listen for WebSocket notifications.
+5. **Download Result**: Retrieve the finished file in your chosen format.
 
-### Tələblər
+## Pipeline Architecture
 
-- Python 3.9+
-- pip və ya conda
+- **Data Fetching**: Downloads data from the configured HTTP endpoint.
+- **Processing**: Applies all transformations using Polars (column changes, filters, aggregations).
+- **Export**: Writes results as CSV, JSON, XLSX, or creates a ZIP archive.
+- **Cleanup**: Manages temp files, handles errors, and tracks each task’s state.
 
-### Addımlar
+## Example Usage
 
-1. **Repository-ni klonlayın**
-   ```bash
-   git clone https://github.com/AferinEzizov/fetchtozip.git
-   cd fetchtozip
-   ```
-
-2. **Asılılıqları quraşdırın**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Mühiti konfiqurasiya edin**
-   ```bash
-   cp .env.example .env
-   # .env faylını redaktə edin
-   ```
-
-4. **Tətbiqi işə salın**
-   ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-5. **API-yə daxil olun**
-   - API Sənədləri: http://localhost:8000/docs
-   - Sağlamlıq Yoxlaması: http://localhost:8000/health
-
-## Performans Göstəriciləri
-
-| Əməliyyat | Pandas | Polars | Təkmilləşmə |
-|-----------|--------|---------|-------------|
-| CSV Oxuma (1M+ sətir) | ~12s | ~1.5s | **8x sürətli** |
-| Məlumat Filtrləmə | ~4.5s | ~0.4s | **10x sürətli** |
-| GroupBy + Aqreqasiya | ~6s | ~0.6s | **10x sürətli** |
-| Yaddaş İstifadəsi | 2-3 GB | 0.5-1 GB | **3x az** |
-
-## API Arayışı
-
-### Əsas Nöqtələr
-
-| Metod | Nöqtə | Təsvir | Status |
-|--------|----------|-------------|---------|
-| `POST` | `/api/v1/input` | Sütun konfiqurasiyası əlavə et | Aktiv |
-| `POST` | `/api/v1/start` | Emal tapşırığını başlat | Aktiv |
-| `GET` | `/api/v1/status/{task_id}` | Tapşırıq statusunu əldə et | Aktiv |
-| `GET` | `/api/v1/download/{task_id}` | ZIP faylını yüklə | Aktiv |
-| `WS` | `/api/v1/ws/{task_id}` | Real-vaxt bildirişləri | Aktiv |
-
-### İstifadə Nümunələri
-
-#### 1. Məlumat Emalını Konfiqurasiya Et
 ```bash
-curl -X POST "http://localhost:8000/api/v1/input" \
+# Add a new input column
+curl -X POST "http://localhost:8000/api/export/inputs" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "gəlir_sütunu",
-    "column": 3,
-    "change_order": 1
-  }'
+  -d '{"name": "revenue", "column": 3, "change_order": 1}'
+
+# Set configuration
+curl -X POST "http://localhost:8000/api/export/configure" \
+  -H "Content-Type: application/json" \
+  -d '{"file_type": "zip", "rate_limit": 10, "page_limit": 100}'
+
+# Start processing
+curl -X POST "http://localhost:8000/api/export/start"
+
+# Check status
+curl "http://localhost:8000/api/export/status/task_abcdef123456"
+
+# Download result (when completed)
+curl -O "http://localhost:8000/api/export/download/task_abcdef123456"
 ```
 
-#### 2. Emalı Başlat
-```bash
-curl -X POST "http://localhost:8000/api/v1/start"
-```
-
-Cavab:
-```json
-{
-  "message": "Export başladı",
-  "task_id": "123e4567-e89b-12d3-a456-426614174000"
-}
-```
-
-#### 3. Proqresi İzlə (WebSocket)
-```javascript
-const ws = new WebSocket('ws://localhost:8000/api/v1/ws/123e4567-e89b-12d3-a456-426614174000');
-
-ws.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    console.log('Status:', data.status); // started, processing, completed, failed
-};
-```
-
-## İnkişaf
-
-### Layihə Strukturu
+## Project Structure
 
 ```
 fetchtozip/
 ├── app/
-│   ├── api/                    # API marşrutları və nöqtələr
-│   │   └── routes.py
-│   ├── core/                   # Konfiqurasiya və parametrlər
-│   │   └── config.py
-│   ├── services/               # Biznes məntiq qatı
-│   │   └── data.py
-│   ├── models/                 # Pydantic modelləri
-│   └── main.py                 # FastAPI tətbiqi
-├── temp/                       # Müvəqqəti fayl saxlama
-├── tests/                      # Test dəstləri
+│   ├── api/         # API routes and endpoints
+│   ├── core/        # Configuration and parameters
+│   ├── services/    # Pipeline, export, and processing logic
+│   ├── models/      # Data schemas (Pydantic)
+│   └── main.py      # FastAPI application entrypoint
+├── temp/            # Temporary file storage
+├── tests/           # Test suites
 ├── requirements.txt
 └── README.md
 ```
 
-### Testlərin İşlədilməsi
+## Requirements
+
+- Python 3.9+
+- pip or conda
+- Docker (for containerized deployment)
+
+## Environment Variables
+
+| Variable         | Description                       | Default     |
+|------------------|-----------------------------------|-------------|
+| `ENVIRONMENT`    | Deployment environment            | development |
+| `LOG_LEVEL`      | Logging verbosity                 | info        |
+| `TEMP_DIR`       | Directory for temporary files     | ./temp      |
+| `MAX_FILE_SIZE`  | Maximum upload size (MB)          | 100         |
+| `WORKER_TIMEOUT` | Background task timeout (seconds) | 300         |
+
+## Running with Docker
 
 ```bash
-# Test asılılıqlarını quraşdır
-pip install pytest pytest-asyncio
-
-# Testləri işlət
-pytest tests/ -v
-
-# Əhatə ilə işlət
-pytest tests/ --cov=app --cov-report=html
-```
-
-## Docker Yerləşdirilməsi
-
-### Qurmaq və İşlətmək
-
-```bash
-# Image qur
 docker build -t fetchtozip:latest .
-
-# Konteyner işlət
-docker run -d \
-  --name fetchtozip \
-  -p 8000:8000 \
-  -v $(pwd)/temp:/app/temp \
-  fetchtozip:latest
+docker run -d --name fetchtozip -p 8000:8000 -v $(pwd)/temp:/app/temp fetchtozip:latest
 ```
 
-### Docker Compose
+Or with Docker Compose:
 
 ```yaml
 version: '3.8'
@@ -187,49 +127,7 @@ services:
       - LOG_LEVEL=info
 ```
 
+---
 
-```json
-{
-  "timestamp": "2024-01-15T10:30:45Z",
-  "level": "INFO",
-  "service": "fetchtozip",
-  "task_id": "123e4567-e89b-12d3-a456-426614174000",
-  "message": "Emal başladı",
-  "duration_ms": 1250
-}
-```
-
-## Konfiqurasiya
-
-### Mühit Dəyişənləri
-
-| Dəyişən | Təsvir | Standart |
-|----------|-------------|---------|
-| `ENVIRONMENT` | Yerləşdirmə mühiti | `development` |
-| `LOG_LEVEL` | Loq səviyyəsi | `info` |
-| `TEMP_DIR` | Müvəqqəti fayllar qovluğu | `./temp` |
-| `MAX_FILE_SIZE` | Maksimum yükləmə ölçüsü (MB) | `100` |
-| `WORKER_TIMEOUT` | Arxa plan tapşırıq vaxt limiti (s) | `300` |
-
-## Töhfə Vermək
-
-İnkişaf iş axını:
-
-1. Repository-ni fork edin
-2. Xüsusiyyət branch yaradın (`git checkout -b feature/yeni-xususiyyet`)
-3. Dəyişikliklərinizi edin
-4. Yeni funksionallıq üçün testlər əlavə edin
-5. Bütün testlərin keçdiyinə əmin olun (`pytest`)
-6. Dəyişikliklərinizi commit edin (`git commit -m 'Yeni xüsusiyyət əlavə et'`)
-7. Branch-ı push edin (`git push origin feature/yeni-xususiyyet`)
-8. Pull Request açın
-
-## Məlum Problemlər
-
-- WebSocket bağlantıları yavaş emal tapşırıqlarında vaxt bitə bilər
-- Uğursuz tapşırıqlar üçün müvəqqəti fayl təmizləməsi təkmilləşdirilməlidir
-
-
-## Lisenziya
-
-Bu layihə MIT Lisenziyası altında lisenziyalanmışdır - təfərrüatlar üçün [LICENSE](LICENSE) faylına baxın.
+**License**: BSD 2-Clause  
+**Author**: [Aferin Ezizov](https://github.com/AferinEzizov)
