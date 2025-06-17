@@ -16,8 +16,12 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
+
+
+
 @router.post("/inputs", summary="Add or update a single column input")
 async def add_or_update_input(input_data: Input): # Corrected to handle a single Input object
+
     """
     Adds a new input or updates an existing one in the in-memory list.
     The input is provided as a single JSON object in the request body.
@@ -58,8 +62,13 @@ async def add_or_update_input(input_data: Input): # Corrected to handle a single
         logger.error(f"Failed to add/update single input: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid input format: {e}")
 
+
+
+
+
 @router.post("/bulk-inputs", summary="Add multiple column inputs via JSON list")
 async def add_bulk_inputs(inputs_data: List[Input]) :
+
     """
     Adds multiple inputs to the in-memory list from a JSON array in the request body.
     Existing inputs with the same 'name' will be updated.
@@ -105,8 +114,12 @@ async def add_bulk_inputs(inputs_data: List[Input]) :
         logger.error(f"Failed to add bulk inputs: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid bulk input format: {e}")
 
+
+
+
 @router.delete("/inputs-clear", summary="Clear all stored inputs")
 async def clear_all_inputs() -> Dict[str, str]:
+
     """
     Clears all input data currently stored in memory.
 
@@ -117,8 +130,12 @@ async def clear_all_inputs() -> Dict[str, str]:
     logger.debug("All inputs cleared.")
     return {"message": "All inputs cleared"}
 
+
+
+
 @router.get("/inputs-list", summary="List all stored inputs")
 async def get_all_inputs() -> Dict[str, Any]:
+
     """
     Retrieves a list of all input data currently stored in memory.
 
@@ -131,8 +148,12 @@ async def get_all_inputs() -> Dict[str, Any]:
         "count": len(Inputs)
     }
 
+
+
+
 @router.post("/configure", summary="Set the active data processing and export configuration") # Improved summary
 async def configure_request(conf_data: Configure) -> Dict[str, Any]:
+
     """
     Sets the active configuration for data processing and export.
     This replaces any previously stored configuration with the new one.
@@ -146,6 +167,7 @@ async def configure_request(conf_data: Configure) -> Dict[str, Any]:
     Raises:
         HTTPException: If there's an issue with the config data.
     """
+
     try:
         Configures.clear() # Clears previous configurations
         Configures.append(conf_data) # Adds the new configuration as the sole active one
