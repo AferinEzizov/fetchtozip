@@ -18,119 +18,202 @@
 - **WebSocket Support**: (If enabled) Real-time task progress notifications via WebSocket.
 - **Modular Python Structure**: Code is split into logical modules—API routing, core config, pipeline services, export utilities, and data models.
 - **Docker Deployment**: Easily containerizable with environment variables for all configs.
-
-## Core API Endpoints
-
-| Method | Endpoint                   | Description                              |
-|--------|----------------------------|------------------------------------------|
-| POST   | `/api/export/inputs`       | Add or update a column input             |
-| POST   | `/api/export/bulk-inputs`  | Add multiple column inputs               |
-| GET    | `/api/export/inputs-list`  | List all stored inputs                   |
-| DELETE | `/api/export/inputs-clear` | Clear all stored inputs                  |
-| POST   | `/api/export/configure`    | Set the active processing configuration  |
-| POST   | `/api/export/start`        | Start a new processing task (background) |
-| GET    | `/api/export/status/{id}`  | Get the status of a processing task      |
-| GET    | `/api/export/download/{id}`| Download the output of a completed task  |
-| DELETE | `/api/export/cancel/{id}`  | Cancel a processing task                 |
-| WS     | `/api/export/ws/{id}`      | (Optional) Real-time progress updates    |
-
-## How It Works
-
-1. **Define Inputs**: Specify columns and transformations via API.
-2. **Configure Processing**: Set source URLs, processing options, and export format.
-3. **Start Task**: Launch processing as a background job.
-4. **Monitor Progress**: Poll status or listen for WebSocket notifications.
-5. **Download Result**: Retrieve the finished file in your chosen format.
-
-## Pipeline Architecture
-
-- **Data Fetching**: Downloads data from the configured HTTP endpoint.
-- **Processing**: Applies all transformations using Polars (column changes, filters, aggregations).
-- **Export**: Writes results as CSV, JSON, XLSX, or creates a ZIP archive.
-- **Cleanup**: Manages temp files, handles errors, and tracks each task’s state.
-  
-## Docker Image
-[![Docker Pulls](https://img.shields.io/docker/aferin/fetchtozip.svg)](https://hub.docker.com/r/aferin/fetchtozip)
-
-## Example Usage
-
-```bash
-# Add a new input column
-curl -X POST "http://localhost:8000/api/export/inputs" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "revenue", "column": 3, "change_order": 1}'
-
-# Set configuration
-curl -X POST "http://localhost:8000/api/export/configure" \
-  -H "Content-Type: application/json" \
-  -d '{"file_type": "zip", "rate_limit": 10, "page_limit": 100}'
-
-# Start processing
-curl -X POST "http://localhost:8000/api/export/start"
-
-# Check status
-curl "http://localhost:8000/api/export/status/task_abcdef123456"
-
-# Download result (when completed)
-curl -O "http://localhost:8000/api/export/download/task_abcdef123456"
-```
-
-## Project Structure
-
-```
-fetchtozip/
-├── app/
-│   ├── api/         # API routes and endpoints
-│   ├── core/        # Configuration and parameters
-│   ├── services/    # Pipeline, export, and processing logic
-│   ├── models/      # Data schemas (Pydantic)
-│   └── main.py      # FastAPI application entrypoint
-├── temp/            # Temporary file storage
-├── tests/           # Test suites
-├── requirements.txt
-└── README.md
-```
-
-## Requirements
-
+## Requirments
 - Python 3.9+
 - pip or conda
 - Docker (for containerized deployment)
 
-## Environment Variables
+# FetchtoZip API Usage Guide
 
-| Variable         | Description                       | Default     |
-|------------------|-----------------------------------|-------------|
-| `ENVIRONMENT`    | Deployment environment            | development |
-| `LOG_LEVEL`      | Logging verbosity                 | info        |
-| `TEMP_DIR`       | Directory for temporary files     | ./temp      |
-| `MAX_FILE_SIZE`  | Maximum upload size (MB)          | 100         |
-| `WORKER_TIMEOUT` | Background task timeout (seconds) | 300         |
+This guide will help you interact efficiently with the FetchtoZip microservice REST API, explaining every endpoint, typical usage, and request/response structure.
 
-## Running with Docker
+---
 
+## Overview
+
+**FetchtoZip** is an API-driven microservice for fetching, processing, and exporting data—primarily to ZIP (or other formats like CSV, JSON, XLSX). Designed for automation and integration, all operations are accessible via clear REST endpoints. The system supports asynchronous background tasks, temporary file management, real-time progress (via WebSocket), and robust error/status tracking.
+
+---
+
+## API Endpoints Explained
+
+### 1. **Column Input Management**
+
+#### Add/Update a Single Input
+- **POST** `/api/export/inputs`
+- **Purpose:** Add or update a single column definition for processing.
+- **Request Body:** JSON, matching the `Input` schema:
+  ```json
+  {
+    "name": "column_name",     // (string, required) Name of the column
+    "column": 1,               // (integer, required) Index or identifier
+    "change_order": 1          // (integer, optional) Order of transformation
+  }
+  ```
+- **Response:** Success message, plus the added/updated input.
+
+#### Add/Update Multiple Inputs
+- **POST** `/api/export/bulk-inputs`
+- **Purpose:** Bulk add or update multiple columns.
+- **Request Body:** JSON array of `Input` objects.
+  ```json
+  [
+    { "name": "a", "column": 1, "change_order": 1 },
+    { "name": "b", "column": 2, "change_order": 2 }
+  ]
+  ```
+- **Response:** Success message and count of inputs added/updated.
+
+#### List All Inputs
+- **GET** `/api/export/inputs-list`
+- **Purpose:** Retrieve the current list of all defined column inputs.
+- **Response:** JSON object with the list and count.
+
+#### Clear All Inputs
+- **DELETE** `/api/export/inputs-clear`
+- **Purpose:** Remove all defined column inputs.
+- **Response:** Success message.
+
+---
+
+### 2. **Processing Configuration**
+
+#### Set Processing Configuration
+- **POST** `/api/export/configure`
+- **Purpose:** Set up data source, export type, limits, and other processing parameters.
+- **Request Body:** JSON, matching the `Configure` schema:
+  ```json
+  {
+    "file_type": "zip",       // (string, required) Export format (zip, csv, json, xlsx)
+    "tmp_dir": "./temp",      // (string, optional) Temporary directory path
+    "rate_limit": 10,         // (integer, optional) Source fetch rate limit
+    "page_limit": 100,        // (integer, optional) Max pages to process
+    "db_url": null            // (string, optional) Database URL, if used
+  }
+  ```
+- **Response:** Success message and the stored config.
+
+---
+
+### 3. **Task Processing**
+
+#### Start a Processing Task
+- **POST** `/api/export/start`
+- **Purpose:** Launches a background job using current inputs and config.
+- **Response:** Success message and a unique `task_id`.
+
+#### Get Task Status
+- **GET** `/api/export/status/{task_id}`
+- **Purpose:** Check the progress, state, or errors of a specific processing task.
+- **Path Parameter:** `task_id` (string, required)
+- **Response:** JSON with task status, progress, or error details.
+
+#### Cancel a Task
+- **DELETE** `/api/export/cancel/{task_id}`
+- **Purpose:** Attempt to cancel a running background task.
+- **Path Parameter:** `task_id` (string, required)
+- **Response:** Success or error message.
+
+---
+
+### 4. **Output Download**
+
+#### Download Result File
+- **GET** `/api/export/download/{task_id}`
+- **Purpose:** Download the processed file for a completed task.
+- **Path Parameter:** `task_id` (string, required)
+- **Response:** Typically a file stream (ZIP, CSV, JSON, XLSX), or an error if not ready.
+
+---
+
+### 5. **WebSocket (Optional)**
+- **WS** `/api/export/ws/{task_id}`
+- **Purpose:** Subscribe for real-time progress updates for a task.
+
+---
+
+## Request/Response Conventions
+
+- **Content-Type:** Always use `application/json` for POST requests.
+- **Validation Errors:** 422 responses will contain error details.
+- **Success:** 200 responses indicate successful operation.
+- **Task IDs:** Returned by `/start`, required for all status, download, and cancel operations.
+
+---
+
+## Example Usage
+
+Add a column input:
 ```bash
-docker build -t fetchtozip:latest .
-docker run -d --name fetchtozip -p 8000:8000 -v $(pwd)/temp:/app/temp fetchtozip:latest
+curl -X POST "http://localhost:8000/api/export/inputs" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "revenue", "column": 3, "change_order": 1}'
 ```
 
-Or with Docker Compose:
+Bulk add columns:
+```bash
+curl -X POST "http://localhost:8000/api/export/bulk-inputs" \
+  -H "Content-Type: application/json" \
+  -d '[{"name": "a", "column": 1}, {"name": "b", "column": 2}]'
+```
 
-```yaml
-version: '3.8'
-services:
-  fetchtozip:
-    build: .
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./temp:/app/temp
-    environment:
-      - ENVIRONMENT=production
-      - LOG_LEVEL=info
+Set export config:
+```bash
+curl -X POST "http://localhost:8000/api/export/configure" \
+  -H "Content-Type: application/json" \
+  -d '{"file_type": "zip", "rate_limit": 10, "page_limit": 100}'
+```
+
+Start processing:
+```bash
+curl -X POST "http://localhost:8000/api/export/start"
+```
+
+Check task status:
+```bash
+curl "http://localhost:8000/api/export/status/<task_id>"
+```
+
+Download result:
+```bash
+curl -O "http://localhost:8000/api/export/download/<task_id>"
 ```
 
 ---
 
-**License**: BSD 2-Clause  
+## Schemas
+
+### Input
+
+| Field         | Type    | Description                     |
+|---------------|---------|---------------------------------|
+| name          | string  | Name of the column              |
+| column        | integer | Column index or identifier      |
+| change_order  | integer | (Optional) Order for processing |
+
+### Configure
+
+| Field      | Type    | Description                          |
+|------------|---------|--------------------------------------|
+| file_type  | string  | Output format: zip, csv, json, xlsx  |
+| tmp_dir    | string  | Temp directory for file storage      |
+| rate_limit | integer | HTTP fetch rate limit                |
+| page_limit | integer | Max number of pages to process       |
+| db_url     | string  | (Optional) Database URL              |
+
+---
+
+## General Best Practices
+
+- **Always configure your inputs and processing before starting a task.**
+- **Use the status endpoint to monitor tasks and know when downloads are ready.**
+- **Use the cancel endpoint to stop long-running or unnecessary tasks.**
+- **Use the WebSocket for real-time updates if needed.**
+- **Handle validation errors by reading the error message and correcting your request data.**
+
+---
+
+**For further details, see the OpenAPI schema or the [project README](https://github.com/AferinEzizov/fetchtozip/blob/main/README.md).**
+
+
 **Author**: [Aferin Ezizov](https://github.com/AferinEzizov)
