@@ -60,7 +60,7 @@
     import json
     from datetime import datetime
     from pyodide.http import pyfetch
-    from js import document, console, WebSocket, setTimeout
+    from js import document, console, WebSocket, setTimeout, window
     from pyodide.ffi import create_proxy
 
     class DataProcessingApp:
@@ -84,15 +84,14 @@
             self.inputs = []
             self.task_id = ''
             self.is_loading = False
-            self.dragged_column = None
+            self.dragged_column_index = None # Changed to store index
             self.export_format = 'csv'
             self.websocket = None
-            self.api_base_url = 'http://3.127.203.80:8000'  # Change to your backend URL
+            self.api_base_url = 'http://3.127.203.80:8000'
 
             self.init_app()
 
         def init_app(self):
-            # Hide loading screen
             document.getElementById('loading-screen').style.display = 'none'
             self.render_config_page()
             self.setup_websocket()
@@ -310,7 +309,7 @@
                         self.columns = []
                         for i, key in enumerate(self.table_data[0].keys()):
                             self.columns.append({'original': key, 'display': key, 'index': i, 'id': f'col-{i}'})
-                        self.inputs = []
+                        self.inputs = [] # Re-initialize inputs based on columns
                         for i, col in enumerate(self.columns):
                             self.inputs.append({'name': col['display'], 'column': i, 'change_order': i})
                     self.task_id = f'task-{int(datetime.now().timestamp())}'
@@ -332,6 +331,7 @@
 
         def render_processing_page(self):
             headers_html = ''
+            # Use self.columns for rendering headers to reflect current order and display names
             for i, column in enumerate(self.columns):
                 headers_html += f'''
                 <th draggable="true" data-column-index="{i}" class="column-header px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-move hover:bg-gray-100 select-none relative group">
@@ -348,7 +348,9 @@
             rows_html = ''
             for row_idx, row in enumerate(self.table_data[:100]):
                 row_html = '<tr class="hover:bg-gray-50">'
+                # Iterate through self.columns to get data in the current display order
                 for column in self.columns:
+                    # Use original key to fetch value from the row dictionary
                     value = row.get(column['original'], '')
                     row_html += f'<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{value}</td>'
                 row_html += '</tr>'
@@ -376,7 +378,7 @@
                     </div>
                 </div>
                 <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                    <div class="overflow-x-auto border rounded-lg">
+                    <div class="overflow-x-auto border rounded-lg shadow-md">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-100">
                                 <tr>
@@ -406,6 +408,15 @@
             async def handle_export(event):
                 self.add_notification('info', 'Export started...')
                 try:
+                    # Prepare data for export based on current column order and display names
+                    export_data = []
+                    header_row = [col['display'] for col in self.columns]
+                    export_data.append(header_row)
+
+                    for row_dict in self.table_data:
+                        ordered_row = [row_dict.get(col['original'], '') for col in self.columns]
+                        export_data.append(ordered_row)
+
                     response = await pyfetch(
                         f'{self.api_base_url}/api/export',
                         method='POST',
@@ -413,6 +424,7 @@
                         body=json.dumps({
                             'task_id': self.task_id,
                             'export_format': self.export_format,
+                            'data': export_data # Send processed data
                         }),
                     )
                     if response.ok:
@@ -430,49 +442,82 @@
             for header in headers:
                 header.addEventListener('dragstart', create_proxy(self.on_drag_start))
                 header.addEventListener('dragover', create_proxy(self.on_drag_over))
+                header.addEventListener('dragleave', create_proxy(self.on_drag_leave)) # Add dragleave event
                 header.addEventListener('drop', create_proxy(self.on_drop))
+                header.addEventListener('dragend', create_proxy(self.on_drag_end)) # Add dragend event
+
                 # Rename button
                 edit_btn = header.querySelector('.edit-btn')
                 if edit_btn:
+                    # Ensure the click listener is on the button itself, not the parent th for rename
                     edit_btn.onclick = create_proxy(self.on_rename_column)
 
         def on_drag_start(self, event):
-            idx = int(event.target.getAttribute('data-column-index'))
-            self.dragged_column = idx
-            event.dataTransfer.effectAllowed = 'move'
-            # add dragging style
-            event.target.classList.add('dragging')
+            # Find the actual th element, as event.target might be a child element
+            target_th = event.target.closest('.column-header')
+            if target_th:
+                idx = int(target_th.getAttribute('data-column-index'))
+                self.dragged_column_index = idx # Store index
+                event.dataTransfer.effectAllowed = 'move'
+                target_th.classList.add('dragging')
 
         def on_drag_over(self, event):
             event.preventDefault()
-            event.dataTransfer.dropEffect = 'move'
-            event.target.classList.add('drag-over')
+            # Find the actual th element
+            target_th = event.target.closest('.column-header')
+            if target_th and target_th != document.querySelectorAll('.column-header')[self.dragged_column_index]:
+                target_th.classList.add('drag-over')
+
+        def on_drag_leave(self, event):
+            # Remove drag-over style when leaving
+            event.target.classList.remove('drag-over')
 
         def on_drop(self, event):
             event.preventDefault()
-            target_idx = int(event.target.getAttribute('data-column-index'))
-            dragged_idx = self.dragged_column
-            if dragged_idx is None or dragged_idx == target_idx:
-                return
-            # Swap columns
-            self.columns[dragged_idx], self.columns[target_idx] = self.columns[target_idx], self.columns[dragged_idx]
-            # Update inputs as well
-            self.inputs[dragged_idx], self.inputs[target_idx] = self.inputs[target_idx], self.inputs[dragged_idx]
-            self.render_processing_page()
-            self.dragged_column = None
+            # Find the actual th element
+            target_th = event.target.closest('.column-header')
+            if target_th:
+                target_idx = int(target_th.getAttribute('data-column-index'))
+                dragged_idx = self.dragged_column_index
+
+                # Remove drag-over style immediately on drop
+                target_th.classList.remove('drag-over')
+
+                if dragged_idx is None or dragged_idx == target_idx:
+                    return
+
+                # Perform the swap in the self.columns list
+                temp_col = self.columns.pop(dragged_idx)
+                self.columns.insert(target_idx, temp_col)
+
+                # Re-render the table to reflect the new order
+                self.render_processing_page()
+                self.dragged_column_index = None # Reset after drop
+
+        def on_drag_end(self, event):
+            # Clean up dragging styles on the element that was dragged
+            dragged_element = document.querySelectorAll('.column-header')[self.dragged_column_index]
+            if dragged_element:
+                dragged_element.classList.remove('dragging')
+            self.dragged_column_index = None
 
         def on_rename_column(self, event):
-            event.stopPropagation()
-            idx = int(event.target.getAttribute('data-column-index'))
-            current_name = self.columns[idx]['display']
-            new_name = window.prompt(f"Rename column '{current_name}' to:", current_name)
-            if new_name and new_name.strip():
-                self.columns[idx]['display'] = new_name.strip()
-                self.inputs[idx]['name'] = new_name.strip()
-                self.render_processing_page()
+            event.stopPropagation() # Prevent drag event from firing
+            # Find the actual button or its parent to get the index
+            btn_element = event.target.closest('button')
+            if btn_element:
+                idx = int(btn_element.getAttribute('data-column-index'))
+                current_name = self.columns[idx]['display']
+                new_name = window.prompt(f"Rename column '{current_name}' to:", current_name)
+                if new_name and new_name.strip() and new_name.strip() != current_name:
+                    self.columns[idx]['display'] = new_name.strip()
+                    # No need to update self.inputs directly as they are rebuilt on render_processing_page
+                    self.render_processing_page()
+                elif new_name is not None and new_name.strip() == '':
+                    self.add_notification('error', 'Column name cannot be empty.')
+
 
     app = DataProcessingApp()
   </py-script>
 </body>
 </html>
-
