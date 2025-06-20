@@ -36,7 +36,7 @@ def _build_external_db_connection_string(db_config: ExternalDBSchema) -> str:
     logger.info(f"DEBUG: Final ConnectorX connection string (password masked): {final_log_conn_str}")
     return conn_str
 
-def _fetch_from_external_db(db_config: ExternalDBSchema, chunk_size: int = 10000) -> pl.LazyFrame:
+def _fetch_from_external_db(db_config: ExternalDBSchema, chunk_size: int = 10) -> pl.LazyFrame:
     """
     Fetches data from an external relational database in chunks.
     Adjusts pagination syntax based on database type.
