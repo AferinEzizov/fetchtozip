@@ -1,7 +1,18 @@
 {
-  "URL": "/api/export",
-  "DB_URL": "http://localhost:3001/api/data",
-  "TEMP_DIR": "tmp",
-  "INPUTS": [],
-  "CONFIGURE": ["zip", "tmp", 10, 10, "http://127.0.0.1:3001/api/data"]
+    "URL": "http://your-app-domain.com",
+    "TEMP_DIR": "tmp",
+    "default_configure": {
+        "file_type": "zip",
+        "tmp_dir": "tmp",
+        "db_config": {
+            "db_type": "mssql",
+            "username": "SA",
+            "password": "YourPasswordHere",
+            "host": "127.0.0.1",
+            "port": "1433",
+            "db_name": "Nem",
+            "sql_query": "SELECT TOP 10 * FROM NewTable",
+            "driver": "ODBC Driver 17 for SQL Server"
+        }
+    }
 }

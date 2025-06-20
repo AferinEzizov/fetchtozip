@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Data Processing & Export Microservice</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="static/style.css" />
+</head>
+<body>
+    <div id="main-container">
+        <header>
+            <h1>Data Processing & Export Microservice</h1>
+            <nav>
+                <button class="tab-btn active" type="button">Column Inputs</button>
+                <button class="tab-btn" type="button">Pipeline Config</button>
+                <button class="tab-btn" type="button">Database Management</button>
+                <button class="tab-btn" type="button">Run Pipeline</button>
+                <button class="tab-btn" type="button">Downloads</button>
+            </nav>
+        </header>
+
+        <section class="tab active" id="tab-inputs">
+            <h2>Column Inputs</h2>
+            <div class="panel">
+                <form class="form-row">
+                    <input type="text" placeholder="Column New Name (unique)" required disabled>
+                    <input type="number" placeholder="Column Index" min="0" required disabled>
+                    <input type="number" placeholder="New Order" min="0" disabled>
+                    <button type="submit" disabled>Add/Update</button>
+                </form>
+                <button class="danger" type="button" disabled>Clear All</button>
+            </div>
+            <div class="list-panel">
+                <em>Inputs will appear here.</em>
+            </div>
+        </section>
+
+        <section class="tab" id="tab-config">
+            <h2>Pipeline Config</h2>
+            <form class="form-col">
+                <label>Output File Type:
+                    <select disabled>
+                        <option>CSV</option>
+                        <option>JSON</option>
+                        <option>Excel (XLSX)</option>
+                        <option>ZIP</option>
+                    </select>
+                </label>
+                <label>Temporary Directory:
+                    <input type="text" placeholder="/tmp/data_exports (optional)" disabled>
+                </label>
+                <fieldset>
+                    <legend>Database Config (choose one)</legend>
+                    <label><input type="radio" name="db-type" value="local" checked disabled> Local SQLite</label>
+                    <label><input type="radio" name="db-type" value="external" disabled> External DB</label>
+                </fieldset>
+                <div id="local-db-fields">
+                    <input type="text" placeholder="SQLite DB File Path or ':memory:'" disabled>
+                    <input type="text" placeholder="Initial SQL (optional)" disabled>
+                    <input type="text" placeholder="SQL Query" disabled>
+                </div>
+                <div id="external-db-fields" style="display:none;">
+                    <input type="text" placeholder="DB Type (postgresql/mysql/...)" disabled>
+                    <input type="text" placeholder="Username" disabled>
+                    <input type="password" placeholder="Password" disabled>
+                    <input type="text" placeholder="Host" disabled>
+                    <input type="text" placeholder="Port" disabled>
+                    <input type="text" placeholder="DB Name" disabled>
+                    <input type="text" placeholder="SQL Query" disabled>
+                    <input type="text" placeholder="ODBC Driver (optional)" disabled>
+                </div>
+                <button type="submit" disabled>Set Active Config</button>
+            </form>
+            <div class="list-panel">
+                <em>Active configuration will appear here.</em>
+            </div>
+        </section>
+
+        <section class="tab" id="tab-db">
+            <h2>Database Management</h2>
+            <div class="panel">
+                <button type="button" disabled>List All DB Configs</button>
+                <button class="danger" type="button" disabled>Clear All</button>
+                <button class="danger" type="button" disabled>Clear External</button>
+                <button class="danger" type="button" disabled>Clear Local</button>
+            </div>
+            <div class="list-panel">
+                <em>Database configuration(s) will appear here.</em>
+            </div>
+        </section>
+
+        <section class="tab" id="tab-run">
+            <h2>Run Data Processing Pipeline</h2>
+            <form class="form-row">
+                <input type="text" placeholder="Task ID (optional)" disabled>
+                <button type="submit" disabled>Run Pipeline</button>
+            </form>
+            <div class="list-panel">
+                <em>Pipeline run results will appear here.</em>
+            </div>
+        </section>
+
+        <section class="tab" id="tab-downloads">
+            <h2>Recent Downloads</h2>
+            <form class="form-row">
+                <input type="text" placeholder="Task ID" disabled>
+                <button type="submit" disabled>Download ZIP</button>
+            </form>
+            <div class="list-panel">
+                <em>Download results will appear here.</em>
+            </div>
+        </section>
+    </div>
+    <footer>
+        <span>Powered by HTML & CSS · Data Processing & Export Microservice UI</span>
+    </footer>
+</body>
+</html>
