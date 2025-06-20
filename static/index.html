@@ -1,118 +1,478 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Data Processing & Export Microservice</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="static/style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Data Processing Hub - PyScript</title>
+  <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
+  <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    .notification {
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    .dragging {
+      opacity: 0.5;
+    }
+    .drag-over {
+      background-color: #e5e7eb;
+    }
+    py-terminal {
+      display: none;
+    }
+  </style>
 </head>
-<body>
-    <div id="main-container">
-        <header>
-            <h1>Data Processing & Export Microservice</h1>
-            <nav>
-                <button class="tab-btn active" type="button">Column Inputs</button>
-                <button class="tab-btn" type="button">Pipeline Config</button>
-                <button class="tab-btn" type="button">Database Management</button>
-                <button class="tab-btn" type="button">Run Pipeline</button>
-                <button class="tab-btn" type="button">Downloads</button>
-            </nav>
-        </header>
-
-        <section class="tab active" id="tab-inputs">
-            <h2>Column Inputs</h2>
-            <div class="panel">
-                <form class="form-row">
-                    <input type="text" placeholder="Column New Name (unique)" required disabled>
-                    <input type="number" placeholder="Column Index" min="0" required disabled>
-                    <input type="number" placeholder="New Order" min="0" disabled>
-                    <button type="submit" disabled>Add/Update</button>
-                </form>
-                <button class="danger" type="button" disabled>Clear All</button>
-            </div>
-            <div class="list-panel">
-                <em>Inputs will appear here.</em>
-            </div>
-        </section>
-
-        <section class="tab" id="tab-config">
-            <h2>Pipeline Config</h2>
-            <form class="form-col">
-                <label>Output File Type:
-                    <select disabled>
-                        <option>CSV</option>
-                        <option>JSON</option>
-                        <option>Excel (XLSX)</option>
-                        <option>ZIP</option>
-                    </select>
-                </label>
-                <label>Temporary Directory:
-                    <input type="text" placeholder="/tmp/data_exports (optional)" disabled>
-                </label>
-                <fieldset>
-                    <legend>Database Config (choose one)</legend>
-                    <label><input type="radio" name="db-type" value="local" checked disabled> Local SQLite</label>
-                    <label><input type="radio" name="db-type" value="external" disabled> External DB</label>
-                </fieldset>
-                <div id="local-db-fields">
-                    <input type="text" placeholder="SQLite DB File Path or ':memory:'" disabled>
-                    <input type="text" placeholder="Initial SQL (optional)" disabled>
-                    <input type="text" placeholder="SQL Query" disabled>
-                </div>
-                <div id="external-db-fields" style="display:none;">
-                    <input type="text" placeholder="DB Type (postgresql/mysql/...)" disabled>
-                    <input type="text" placeholder="Username" disabled>
-                    <input type="password" placeholder="Password" disabled>
-                    <input type="text" placeholder="Host" disabled>
-                    <input type="text" placeholder="Port" disabled>
-                    <input type="text" placeholder="DB Name" disabled>
-                    <input type="text" placeholder="SQL Query" disabled>
-                    <input type="text" placeholder="ODBC Driver (optional)" disabled>
-                </div>
-                <button type="submit" disabled>Set Active Config</button>
-            </form>
-            <div class="list-panel">
-                <em>Active configuration will appear here.</em>
-            </div>
-        </section>
-
-        <section class="tab" id="tab-db">
-            <h2>Database Management</h2>
-            <div class="panel">
-                <button type="button" disabled>List All DB Configs</button>
-                <button class="danger" type="button" disabled>Clear All</button>
-                <button class="danger" type="button" disabled>Clear External</button>
-                <button class="danger" type="button" disabled>Clear Local</button>
-            </div>
-            <div class="list-panel">
-                <em>Database configuration(s) will appear here.</em>
-            </div>
-        </section>
-
-        <section class="tab" id="tab-run">
-            <h2>Run Data Processing Pipeline</h2>
-            <form class="form-row">
-                <input type="text" placeholder="Task ID (optional)" disabled>
-                <button type="submit" disabled>Run Pipeline</button>
-            </form>
-            <div class="list-panel">
-                <em>Pipeline run results will appear here.</em>
-            </div>
-        </section>
-
-        <section class="tab" id="tab-downloads">
-            <h2>Recent Downloads</h2>
-            <form class="form-row">
-                <input type="text" placeholder="Task ID" disabled>
-                <button type="submit" disabled>Download ZIP</button>
-            </form>
-            <div class="list-panel">
-                <em>Download results will appear here.</em>
-            </div>
-        </section>
+<body class="bg-gray-50">
+  <div id="notifications" class="fixed top-4 right-4 space-y-2 z-50"></div>
+  <div id="app">
+    <div
+      id="loading-screen"
+      class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center"
+    >
+      <div class="text-center">
+        <div
+          class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"
+        ></div>
+        <h2 class="text-xl font-semibold text-gray-700">
+          Loading Data Processing Hub...
+        </h2>
+      </div>
     </div>
-    <footer>
-        <span>Powered by HTML & CSS · Data Processing & Export Microservice UI</span>
-    </footer>
+  </div>
+
+  <py-config>
+    packages = ["requests"]
+  </py-config>
+
+  <py-script>
+    import asyncio
+    import json
+    from datetime import datetime
+    from pyodide.http import pyfetch
+    from js import document, console, WebSocket, setTimeout
+    from pyodide.ffi import create_proxy
+
+    class DataProcessingApp:
+        def __init__(self):
+            self.current_step = 'config'
+            self.db_config = {
+                'type': 'external',
+                'db_type': 'postgresql',
+                'username': '',
+                'password': '',
+                'host': 'localhost',
+                'port': '5432',
+                'db_name': '',
+                'sql_query': 'SELECT * FROM users LIMIT 100',
+                'driver': '',
+                'db_file_path': ':memory:',
+                'initial_sql': ''
+            }
+            self.table_data = []
+            self.columns = []
+            self.inputs = []
+            self.task_id = ''
+            self.is_loading = False
+            self.dragged_column = None
+            self.export_format = 'csv'
+            self.websocket = None
+            self.api_base_url = 'http://3.127.203.80:8000'  # Change to your backend URL
+
+            self.init_app()
+
+        def init_app(self):
+            # Hide loading screen
+            document.getElementById('loading-screen').style.display = 'none'
+            self.render_config_page()
+            self.setup_websocket()
+
+        def setup_websocket(self):
+            try:
+                ws_url = self.api_base_url.replace('http', 'ws') + '/ws'
+                self.websocket = WebSocket.new(ws_url)
+
+                def on_message(event):
+                    try:
+                        data = json.loads(event.data)
+                        self.add_notification(data.get('type', 'info'), data.get('message', ''))
+                    except Exception:
+                        pass
+
+                def on_error(event):
+                    self.add_notification('error', 'WebSocket connection failed')
+
+                self.websocket.onmessage = create_proxy(on_message)
+                self.websocket.onerror = create_proxy(on_error)
+            except Exception:
+                console.log('WebSocket not available')
+
+        def add_notification(self, type_str, message):
+            notification_id = f"notif-{datetime.now().timestamp()}"
+            color_class = {
+                'success': 'bg-green-500',
+                'error': 'bg-red-500',
+                'info': 'bg-blue-500'
+            }.get(type_str, 'bg-blue-500')
+
+            notification_html = f'''
+            <div id="{notification_id}" class="notification px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 {color_class} text-white">
+                <i class="fas fa-bell"></i>
+                <span class="text-sm">{message}</span>
+            </div>
+            '''
+
+            container = document.getElementById('notifications')
+            container.insertAdjacentHTML('beforeend', notification_html)
+
+            def remove_notification():
+                elem = document.getElementById(notification_id)
+                if elem:
+                    elem.remove()
+
+            setTimeout(create_proxy(remove_notification), 5000)
+
+        def render_config_page(self):
+            html = f'''
+            <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+                <div class="bg-white shadow-sm border-b">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div class="flex justify-between items-center py-4">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-database text-2xl text-blue-600"></i>
+                                <h1 class="text-2xl font-bold text-gray-900">Data Processing Hub</h1>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="px-8 py-6 bg-gradient-to-r from-blue-600 to-indigo-600">
+                            <h2 class="text-2xl font-bold text-white">Database Configuration</h2>
+                            <p class="text-blue-100 mt-2">Connect to your database to start processing data</p>
+                        </div>
+                        <div class="p-8 space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-3">Database Type</label>
+                                <div class="flex space-x-4">
+                                    <button id="btn-external" class="px-4 py-2 rounded-lg border bg-blue-50 border-blue-200 text-blue-700">
+                                        External Database
+                                    </button>
+                                    <button id="btn-local" class="px-4 py-2 rounded-lg border bg-gray-50 border-gray-200 text-gray-700">
+                                        Local SQLite
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="external-config" class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Database Engine</label>
+                                        <select id="db-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="postgresql">PostgreSQL</option>
+                                            <option value="mysql">MySQL</option>
+                                            <option value="sqlserver">SQL Server</option>
+                                            <option value="mssql">MSSQL</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Host</label>
+                                        <input type="text" id="host" value="localhost" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Port</label>
+                                        <input type="text" id="port" value="5432" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                                        <input type="text" id="username" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                                        <input type="password" id="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Database Name</label>
+                                    <input type="text" id="db-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Driver (Optional)</label>
+                                    <input type="text" id="driver" placeholder="ODBC Driver 17 for SQL Server" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                            </div>
+
+                            <div id="local-config" class="space-y-4" style="display:none;">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Database File Path</label>
+                                    <input type="text" id="db-file-path" value=":memory:" placeholder=":memory: or /path/to/database.db" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Initial SQL (Optional)</label>
+                                    <textarea id="initial-sql" rows="4" placeholder="CREATE TABLE users (id INT, name TEXT);" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">SQL Query</label>
+                                <textarea id="sql-query" rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">SELECT * FROM users LIMIT 100</textarea>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button id="connect-btn" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center space-x-2">
+                                    <i class="fas fa-database"></i>
+                                    <span>Connect & Load Data</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            '''
+            document.getElementById('app').innerHTML = html
+            self.setup_config_events()
+
+        def setup_config_events(self):
+            def switch_to_external(event):
+                self.db_config['type'] = 'external'
+                document.getElementById('btn-external').className = 'px-4 py-2 rounded-lg border bg-blue-50 border-blue-200 text-blue-700'
+                document.getElementById('btn-local').className = 'px-4 py-2 rounded-lg border bg-gray-50 border-gray-200 text-gray-700'
+                document.getElementById('external-config').style.display = 'block'
+                document.getElementById('local-config').style.display = 'none'
+
+            def switch_to_local(event):
+                self.db_config['type'] = 'local'
+                document.getElementById('btn-external').className = 'px-4 py-2 rounded-lg border bg-gray-50 border-gray-200 text-gray-700'
+                document.getElementById('btn-local').className = 'px-4 py-2 rounded-lg border bg-blue-50 border-blue-200 text-blue-700'
+                document.getElementById('external-config').style.display = 'none'
+                document.getElementById('local-config').style.display = 'block'
+
+            document.getElementById('btn-external').onclick = create_proxy(switch_to_external)
+            document.getElementById('btn-local').onclick = create_proxy(switch_to_local)
+
+            async def handle_connect(event):
+                await self.handle_db_config_submit()
+
+            document.getElementById('connect-btn').onclick = create_proxy(handle_connect)
+
+        async def handle_db_config_submit(self):
+            if self.is_loading:
+                return
+            self.is_loading = True
+            btn = document.getElementById('connect-btn')
+            btn.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>Connecting...'
+            btn.disabled = True
+
+            self.add_notification('info', 'Connecting to database...')
+
+            try:
+                if self.db_config['type'] == 'external':
+                    request_body = {
+                        'db_type': document.getElementById('db-type').value,
+                        'username': document.getElementById('username').value,
+                        'password': document.getElementById('password').value,
+                        'host': document.getElementById('host').value,
+                        'port': document.getElementById('port').value,
+                        'db_name': document.getElementById('db-name').value,
+                        'sql_query': document.getElementById('sql-query').value,
+                        'driver': document.getElementById('driver').value or None,
+                    }
+                else:
+                    request_body = {
+                        'db_file_path': document.getElementById('db-file-path').value,
+                        'initial_sql': document.getElementById('initial-sql').value or None,
+                        'sql_query': document.getElementById('sql-query').value,
+                    }
+
+                response = await pyfetch(
+                    f'{self.api_base_url}/api/tables/table/data',
+                    method='POST',
+                    headers={'Content-Type': 'application/json'},
+                    body=json.dumps(request_body),
+                )
+
+                if response.ok:
+                    result = await response.json()
+                    self.table_data = result.get('data', [])
+                    if self.table_data:
+                        self.columns = []
+                        for i, key in enumerate(self.table_data[0].keys()):
+                            self.columns.append({'original': key, 'display': key, 'index': i, 'id': f'col-{i}'})
+                        self.inputs = []
+                        for i, col in enumerate(self.columns):
+                            self.inputs.append({'name': col['display'], 'column': i, 'change_order': i})
+                    self.task_id = f'task-{int(datetime.now().timestamp())}'
+                    self.current_step = 'processing'
+                    self.add_notification('success', f'Loaded {len(self.table_data)} rows successfully')
+                    self.render_processing_page()
+                else:
+                    error_text = await response.text()
+                    self.add_notification('error', f'Database connection failed: {error_text}')
+
+            except Exception as e:
+                self.add_notification('error', f'Database connection failed: {str(e)}')
+
+            finally:
+                self.is_loading = False
+                if btn:
+                    btn.innerHTML = '<i class="fas fa-database mr-2"></i>Connect & Load Data'
+                    btn.disabled = False
+
+        def render_processing_page(self):
+            headers_html = ''
+            for i, column in enumerate(self.columns):
+                headers_html += f'''
+                <th draggable="true" data-column-index="{i}" class="column-header px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-move hover:bg-gray-100 select-none relative group">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-grip-vertical text-gray-400 group-hover:text-gray-600"></i>
+                        <span class="column-name" data-column-index="{i}">{column['display']}</span>
+                        <button class="edit-btn opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-gray-600" data-column-index="{i}">
+                            <i class="fas fa-edit text-xs"></i>
+                        </button>
+                    </div>
+                </th>
+                '''
+
+            rows_html = ''
+            for row_idx, row in enumerate(self.table_data[:100]):
+                row_html = '<tr class="hover:bg-gray-50">'
+                for column in self.columns:
+                    value = row.get(column['original'], '')
+                    row_html += f'<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{value}</td>'
+                row_html += '</tr>'
+                rows_html += row_html
+
+            footer_notice = ''
+            if len(self.table_data) > 100:
+                footer_notice = f'<div class="px-6 py-4 bg-gray-50 border-t border-gray-200"><p class="text-sm text-gray-500">Showing first 100 rows of {len(self.table_data)} total rows. Export to see all data.</p></div>'
+
+            html = f'''
+            <div class="min-h-screen bg-gray-50">
+                <div class="bg-white shadow-sm border-b">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div class="flex justify-between items-center py-4">
+                            <div class="flex items-center space-x-4">
+                                <button id="back-btn" class="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+                                    <i class="fas fa-arrow-left"></i><span>Back</span>
+                                </button>
+                                <h1 class="text-2xl font-bold text-gray-900">Data Processing Hub</h1>
+                            </div>
+                            <button id="export-btn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                Export CSV
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                    <div class="overflow-x-auto border rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    {headers_html}
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {rows_html}
+                            </tbody>
+                        </table>
+                    </div>
+                    {footer_notice}
+                </div>
+            </div>
+            '''
+            document.getElementById('app').innerHTML = html
+            self.setup_processing_events()
+
+        def setup_processing_events(self):
+            # Back button
+            def go_back(event):
+                self.current_step = 'config'
+                self.render_config_page()
+            document.getElementById('back-btn').onclick = create_proxy(go_back)
+
+            # Export button
+            async def handle_export(event):
+                self.add_notification('info', 'Export started...')
+                try:
+                    response = await pyfetch(
+                        f'{self.api_base_url}/api/export',
+                        method='POST',
+                        headers={'Content-Type': 'application/json'},
+                        body=json.dumps({
+                            'task_id': self.task_id,
+                            'export_format': self.export_format,
+                        }),
+                    )
+                    if response.ok:
+                        self.add_notification('success', 'Export completed! Check your downloads.')
+                    else:
+                        error_text = await response.text()
+                        self.add_notification('error', f'Export failed: {error_text}')
+                except Exception as e:
+                    self.add_notification('error', f'Export failed: {str(e)}')
+
+            document.getElementById('export-btn').onclick = create_proxy(handle_export)
+
+            # Drag & drop for columns + rename
+            headers = document.querySelectorAll('.column-header')
+            for header in headers:
+                header.addEventListener('dragstart', create_proxy(self.on_drag_start))
+                header.addEventListener('dragover', create_proxy(self.on_drag_over))
+                header.addEventListener('drop', create_proxy(self.on_drop))
+                # Rename button
+                edit_btn = header.querySelector('.edit-btn')
+                if edit_btn:
+                    edit_btn.onclick = create_proxy(self.on_rename_column)
+
+        def on_drag_start(self, event):
+            idx = int(event.target.getAttribute('data-column-index'))
+            self.dragged_column = idx
+            event.dataTransfer.effectAllowed = 'move'
+            # add dragging style
+            event.target.classList.add('dragging')
+
+        def on_drag_over(self, event):
+            event.preventDefault()
+            event.dataTransfer.dropEffect = 'move'
+            event.target.classList.add('drag-over')
+
+        def on_drop(self, event):
+            event.preventDefault()
+            target_idx = int(event.target.getAttribute('data-column-index'))
+            dragged_idx = self.dragged_column
+            if dragged_idx is None or dragged_idx == target_idx:
+                return
+            # Swap columns
+            self.columns[dragged_idx], self.columns[target_idx] = self.columns[target_idx], self.columns[dragged_idx]
+            # Update inputs as well
+            self.inputs[dragged_idx], self.inputs[target_idx] = self.inputs[target_idx], self.inputs[dragged_idx]
+            self.render_processing_page()
+            self.dragged_column = None
+
+        def on_rename_column(self, event):
+            event.stopPropagation()
+            idx = int(event.target.getAttribute('data-column-index'))
+            current_name = self.columns[idx]['display']
+            new_name = window.prompt(f"Rename column '{current_name}' to:", current_name)
+            if new_name and new_name.strip():
+                self.columns[idx]['display'] = new_name.strip()
+                self.inputs[idx]['name'] = new_name.strip()
+                self.render_processing_page()
+
+    app = DataProcessingApp()
+  </py-script>
 </body>
 </html>
+

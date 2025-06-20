@@ -28,7 +28,7 @@ class ExternalDBSchema(BaseModel):
     sql_query: str = Field(..., description="SQL query to fetch data from the external database.")
     # THIS FIELD IS CRUCIAL:
     driver: Optional[str] = Field(None, description="Optional ODBC driver name for databases like MSSQL (e.g., 'ODBC Driver 17 for SQL Server'). Required for some ConnectorX connections.")
-
+    connection_parameters: Optional[str] = None # <--- ADD THIS LINE
 
 class LocalDBSchema(BaseModel):
     """

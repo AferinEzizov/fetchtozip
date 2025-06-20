@@ -1,4 +1,5 @@
 httpx
+connectx
 fastapi
 uvicorn
 polars
